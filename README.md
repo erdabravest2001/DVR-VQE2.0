@@ -14,6 +14,6 @@ numpy
 Make sure to properly install  ```{python} lib.error_mit_sim import * ```
 
 ## Developers:
-Ethan Elliot Rajkumar 
-Kasra Asnaahari
-Roman V. Krems
+/* Ethan Elliot Rajkumar 
+/* Kasra Asnaahari
+/* Roman V. Krems
