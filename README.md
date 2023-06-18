@@ -7,9 +7,10 @@ Link to be posted.
 
 ## Note: 
 #Pre-reqs: 
+```{python}
 Qiskit >= 0.43.1
 qiskit_ibm_runtime 
-numpy 
+numpy ```
 
 Make sure to properly install  ```{python} lib.error_mit_sim import * ```
 
