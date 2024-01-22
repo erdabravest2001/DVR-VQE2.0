@@ -2,14 +2,14 @@ def build_circuit(c, ansatz_options, opt_level=2):
     import numpy as np
     from qiskit import QuantumCircuit, transpile
     from qiskit.circuit import Parameter
-
+    
     n_qubits = c.shape[0]
     depth = c.shape[1]
     out = QuantumCircuit(n_qubits)
     n_params = np.count_nonzero(c == 1) + (n_qubits if ansatz_options['add_rs'] else 0)
     if n_params == 0:
         theta = Parameter('X[0]')
-        out.ry(theta, 0)
+        out.rz(theta, 0)
     thetas = [Parameter(f'X[{i}]') for i in range(n_params)]
     p = 0
 
@@ -19,7 +19,7 @@ def build_circuit(c, ansatz_options, opt_level=2):
             out.h(i)
     if ansatz_options['add_rs']:
         for i in range(n_qubits):
-            out.ry(thetas[p], i)
+            out.rz(thetas[p], i)
             last_r[i] = True
             p += 1
     
@@ -32,15 +32,15 @@ def build_circuit(c, ansatz_options, opt_level=2):
             #     out.h(q)
             #     last_r[q] = False
             elif gate == 1 and not last_r[q]:
-                out.ry(thetas[p], q)
+                out.rz(thetas[p], q)
                 last_r[q] = True
                 p += 1
             elif gate == 2:
-                out.cx(q, q - (gate - 1))
+                out.ecr(q, q - (gate - 1))
                 last_r[q] = False
                 last_r[q - (gate - 1)] = False
             elif gate == 3:
-                out.cz(q, q - (gate - 1))
+                out.sx(q, q - (gate - 1))
                 last_r[q] = False
                 last_r[q - (gate - 1)] = False
 
@@ -92,20 +92,20 @@ def build_circuit_ent(ansatz_options, gates, simplify=False):
             if (not simplify) or ((simplify) and (q not in prev_rots)):
                 theta = Parameter(f'$x_{{{p}}}$')
                 p += 1
-                ansatz.ry(theta, q)
+                ansatz.rz(theta, q)
                 prev_rots.append(q)
         ansatz.barrier(range(num_qubits))
         for j, (q1, q2) in enumerate(zip(*tri_inds)):
             if constructive:
                 if j + i * num_gates in gates:
-                    ansatz.cx(q1, q2)
+                    ansatz.ecr(q1, q2)
                     if q1 in prev_rots:
                         prev_rots.remove(q1)
                     if q2 in prev_rots:
                         prev_rots.remove(q2)
             else: 
                 if j + i * num_gates not in gates:
-                    ansatz.cx(q1, q2)
+                    ansatz.ecr(q1, q2)
                     if q1 in prev_rots:
                         prev_rots.remove(q1)
                     if q2 in prev_rots:
