@@ -1,8 +1,8 @@
-def build_circuit(c, ansatz_options, opt_level=2):
-    import numpy as np
-    from qiskit import QuantumCircuit, transpile
-    from qiskit.circuit import Parameter
-    
+import numpy as np
+from qiskit import QuantumCircuit, transpile
+from qiskit.circuit import Parameter
+
+def build_circuit(c, ansatz_options, opt_level=2):    
     n_qubits = c.shape[0]
     depth = c.shape[1]
     out = QuantumCircuit(n_qubits)
@@ -116,6 +116,6 @@ def build_circuit_ent(ansatz_options, gates, simplify=False):
             theta = Parameter(f'$x_{{{p}}}$')
             # theta = Parameter(f'')
             p += 1
-            ansatz.ry(theta, q)
+            ansatz.rz(theta, q)
             prev_rots.append(q)
     return ansatz
