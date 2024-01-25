@@ -3,49 +3,70 @@ from qiskit import QuantumCircuit, transpile
 from qiskit.circuit import Parameter
 
 def build_circuit(c, ansatz_options, opt_level=2):    
-    n_qubits = c.shape[0]
-    depth = c.shape[1]
+    n_qubits = c.shape[0]  # Number of qubits in the circuit
+    depth = c.shape[1]     # Depth of the circuit
+
+    # Initialize a quantum circuit
     out = QuantumCircuit(n_qubits)
+
+    # Calculate the number of parameters based on the input matrix 'c' and ansatz options
     n_params = np.count_nonzero(c == 1) + (n_qubits if ansatz_options['add_rs'] else 0)
+
+    # Handling the case with no parameters
     if n_params == 0:
         theta = Parameter('X[0]')
         out.rz(theta, 0)
-    thetas = [Parameter(f'X[{i}]') for i in range(n_params)]
-    p = 0
 
-    last_r = [False for i in range(n_qubits)]
+    # Initialize parameters for the gates
+    thetas = [Parameter(f'X[{i}]') for i in range(n_params)]
+    p = 0  # Parameter index
+
+    # Track the last rotation on each qubit
+    last_r = [False] * n_qubits
+
+    # Add H gates if specified in ansatz options
     if ansatz_options['add_h']:
         for i in range(n_qubits):
-            out.h(i)
+            out.h(i)  
+            last_r[i] = False 
+
+    # Add SX gates if specified in ansatz options
+    if ansatz_options['add_sx']:
+        for i in range(n_qubits):
+            out.sx(i)
+            last_r[i] = False
+
+    # Add Rz gates if specified in ansatz options
     if ansatz_options['add_rs']:
         for i in range(n_qubits):
             out.rz(thetas[p], i)
-            last_r[i] = True
+            last_r[i] = False
             p += 1
     
+    # Iterate through the depth of the circuit
     for i in range(depth):
-        layer = c[:, i]
+        layer = c[:, i]  # Get the i-th layer of gates
         for q, gate in enumerate(layer):
             if gate == 0:
-                pass
-            # elif gate == 1:
-            #     out.h(q)
-            #     last_r[q] = False
+                pass  # Do nothing for gate 0
             elif gate == 1 and not last_r[q]:
-                out.rz(thetas[p], q)
+                out.rz(thetas[p], q)  # Apply Rz gate
                 last_r[q] = True
                 p += 1
             elif gate == 2:
-                out.ecr(q, q - (gate - 1))
+                q_new = q - (gate - 1)
+                out.ecr(q, q_new)  # Apply ECR gate
                 last_r[q] = False
-                last_r[q - (gate - 1)] = False
+                last_r[q_new] = False
             elif gate == 3:
-                out.sx(q, q - (gate - 1))
+                out.sx(q)  # Apply SX gate
                 last_r[q] = False
                 last_r[q - (gate - 1)] = False
 
+    # Transpile the circuit for optimization
     out = transpile(out, optimization_level=opt_level)
     return out
+
 
 def find_allowed_gates(num_qubits, reps, partitions):
     import numpy as np
@@ -81,10 +102,9 @@ def build_circuit_ent(ansatz_options, gates, simplify=False):
     reps = ansatz_options['reps']
     constructive = ansatz_options['constructive']
     ansatz = QuantumCircuit(num_qubits)
-
+    ansatz.global_phase = 3*np.pi/2
     tri_inds = np.triu_indices(num_qubits, k=1)
     num_gates = len(tri_inds[0])
-    
     p = 0
     prev_rots = []
     for i in range(reps):
@@ -93,6 +113,8 @@ def build_circuit_ent(ansatz_options, gates, simplify=False):
                 theta = Parameter(f'$x_{{{p}}}$')
                 p += 1
                 ansatz.rz(theta, q)
+                ansatz.x(q)
+                ansatz.rz(3*np.pi/2,q)
                 prev_rots.append(q)
         ansatz.barrier(range(num_qubits))
         for j, (q1, q2) in enumerate(zip(*tri_inds)):
@@ -117,5 +139,6 @@ def build_circuit_ent(ansatz_options, gates, simplify=False):
             # theta = Parameter(f'')
             p += 1
             ansatz.rz(theta, q)
+            ansatz.x(q)
             prev_rots.append(q)
     return ansatz

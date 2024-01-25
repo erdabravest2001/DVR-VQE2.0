@@ -46,10 +46,12 @@ class DVR_VQE:
         return TwoLocal(num_qubits, rotation_blocks=ansatz_options['rotation_blocks'], entanglement_blocks=ansatz_options['entanglement_blocks'], entanglement=ansatz_options['entanglement'], reps=ansatz_options['reps']).decompose()
 
     def opt_vqe(self, h_dvr_pauli, ansatz, vqe_options, log_file=None, opt_params=None):
+        from qiskit_ibm_runtime import Estimator
         import numpy as np
         from .utils import print_log
         from qiskit import Aer
-        from qiskit.algorithms import VQE
+        from qiskit_algorithms.minimum_eigensolvers import VQE
+        from qiskit_aer.primitives import Estimator as AerEstimator
         from qiskit.utils import QuantumInstance, algorithm_globals
 
         converge_cnts = np.empty([len(vqe_options['optimizers'])], dtype=object)
@@ -76,8 +78,8 @@ class DVR_VQE:
             for j in range(vqe_options['repeats']):
                 counts = []
                 values = []
-                vqe = VQE(ansatz, optimizer, callback=store_intermediate_result, initial_point=params, 
-                        quantum_instance=QuantumInstance(backend=Aer.get_backend('statevector_simulator')))
+                estimator = AerEstimator(run_options={"shots": 2048, "seed": 42})
+                vqe = VQE(estimator, ansatz, optimizer, initial_point=params, callback=store_intermediate_result)
                 if opt_params is None:
                     result = vqe.compute_minimum_eigenvalue(operator=h_dvr_pauli)
                 else:
@@ -117,19 +119,27 @@ class DVR_VQE:
         return out
 
     def parse_optimizer_string(self, s):
-        from qiskit.algorithms.optimizers import COBYLA, L_BFGS_B, SLSQP, NELDER_MEAD
+        from qiskit.algorithms.optimizers import COBYLA, L_BFGS_B, SLSQP, NELDER_MEAD, SPSA, GSLS, UMDA, IMFIL
 
         name, maxiter = s.split('.')
         maxiter = int(maxiter)
         if name == 'COBYLA':
             return COBYLA(maxiter=maxiter)
+        elif name == 'SPSA':
+            return SPSA(maxiter=maxiter)
+        elif name == 'GSLS':
+            return GSLS(maxiter=maxiter)
         elif name == 'L_BFGS_B':
             return L_BFGS_B(maxfun=maxiter)
         elif name == 'SLSQP':
             return SLSQP(maxiter=maxiter)
         elif name == 'NELDER_MEAD':
             return NELDER_MEAD(maxfev=maxiter)
-
+        elif name == 'UMDA':
+            return UMDA(maxiter=maxiter)
+        elif name == 'IMFIL':
+            return IMFIL(maxiter=maxiter)
+        
     def print_options(self, options_list, options_file):
         import json
 
@@ -245,7 +255,7 @@ class DVR_VQE:
         return best_gate, converge_cnts, converge_vals, best_params, best_energies
 
     def get_dvr_vqe(self, dvr_options, ansatz_options, vqe_options, excited_states=False, cont=0):
-        from .dvr2d import pauli_decompose
+        from qiskit.quantum_info import SparsePauliOp
         from .utils import hartree
         from .greedy_circs import build_circuit, build_circuit_ent, find_allowed_gates
         from .block_circs import block_divider, build_circuit_from_s
@@ -254,7 +264,7 @@ class DVR_VQE:
 
         h_dvr = self.get_h_dvr(dvr_options, J=0) * hartree
         num_qubits = int(np.log2(h_dvr.shape[0]))
-        h_dvr_pauli = pauli_decompose(h_dvr)
+        h_dvr_pauli = SparsePauliOp.from_operator(h_dvr) 
 
         vqe_id = self.gen_id()
         if ansatz_options['type'] == 'twolocal':
