@@ -1,4 +1,4 @@
-from .utils import da_to_au
+from utils import da_to_au
 m_cr = 51.940509 * da_to_au
 
 cr2_params = {

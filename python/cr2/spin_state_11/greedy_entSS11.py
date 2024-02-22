@@ -1,13 +1,10 @@
-import sys
-# Add the custom library directory to Python's search path for modules.
-sys.path.append('/Users/ethanelliotrajkumar/Documents/DVR-VQE2.0/lib')
-# Import modules and functions from the custom library.
-from greedy_circs import *  # Assuming functions for circuit optimization
-import numpy as np  # Importing NumPy for numerical computations
-from dvr1d import *  # For 1D Discrete Variable Representation operations
-from utils import *  # Utility functions that might be widely used
-from vqe import DVR_VQE  # Importing the class for DVR using VQE
-from pot_gen import get_pot_cr2  # Function to generate potential for CR2
+from lib.greedy_circs import *
+
+import numpy as np
+from lib.dvr1d import *
+from lib.utils import *
+from lib.vqe import DVR_VQE
+from lib.pot_gen import get_pot_cr2
 
 # 16 points
 params16 = [5.2, 9]
@@ -34,13 +31,13 @@ ansatz_options_list = [{
 } for reps in [1, 2, 3]]
 
 vqe_options = {
-    'optimizers': ['UMDA.25', 'TNC.10000', 'NFT.25', 'ADAM.1000', 'POWELL.1000' ],
-    'repeats': 2, 
+    'optimizers': ['L_BFGS_B.80000', 'SLSQP.1000', 'UMDA.25'],
+    'repeats': 5, 
     'seed': 42
 }
 
 mol_params = cr2_params
-spin = 13
+spin = 11
 mol_params['name'] += f'_{spin}'
 
 pot, lims = get_pot_cr2(spin)

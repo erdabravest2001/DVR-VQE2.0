@@ -1,5 +1,5 @@
 from os import remove
-from .utils import print_log
+from utils import print_log
 
 class DVR_VQE:
     def __init__(self, mol_params, pot_fun, log_dir=None) -> None:
@@ -12,9 +12,9 @@ class DVR_VQE:
         return str(int(time.time()))
 
     def get_DVR_Rtheta(self, dvr_options):
-        from .utils import au_to_angs
-        from .dvr2d import get_DVR_Rtheta
-        from .dvr1d import get_dvr_r
+        from utils import au_to_angs
+        from dvr2d import get_DVR_Rtheta
+        from dvr1d import get_dvr_r
         
         if dvr_options['type'] == 'jacobi':
             Rs_DVR, Xs_K = get_DVR_Rtheta(dvr_options)
@@ -25,15 +25,15 @@ class DVR_VQE:
 
     def get_h_dvr(self, dvr_options, J=0):
         if dvr_options['type'] == '1d':
-            from .dvr1d import get_ham_DVR
+            from dvr1d import get_ham_DVR
             return get_ham_DVR(self.pot, dvr_options, mol_params=self.mol_params)
         elif dvr_options['type'] == 'jacobi':
-            from .dvr2d import get_ham_DVR
+            from dvr2d import get_ham_DVR
             return get_ham_DVR(self.pot, dvr_options, mol_params=self.mol_params)
 
     def get_ansatz(self, ansatz_options, num_qubits):
         from qiskit.circuit.library import TwoLocal
-        from .greedy_circs import build_circuit_ent
+        from greedy_circs import build_circuit_ent
         
         if 'gates' in ansatz_options.keys():
             options = {
@@ -48,7 +48,7 @@ class DVR_VQE:
     def opt_vqe(self, h_dvr_pauli, ansatz, vqe_options, log_file=None, opt_params=None):
         from qiskit_ibm_runtime import Estimator
         import numpy as np
-        from .utils import print_log
+        from utils import print_log
         from qiskit import Aer
         from qiskit_algorithms.minimum_eigensolvers import VQE
         from qiskit_aer.primitives import Estimator as AerEstimator
@@ -78,7 +78,7 @@ class DVR_VQE:
             for j in range(vqe_options['repeats']):
                 counts = []
                 values = []
-                estimator = AerEstimator(run_options={"shots": 2048, "seed": 42})
+                estimator = AerEstimator(run_options={"shots": 4000, "seed": 42})
                 vqe = VQE(estimator, ansatz, optimizer, initial_point=params, callback=store_intermediate_result)
                 if opt_params is None:
                     result = vqe.compute_minimum_eigenvalue(operator=h_dvr_pauli)
@@ -119,8 +119,7 @@ class DVR_VQE:
         return out
 
     def parse_optimizer_string(self, s):
-        from qiskit.algorithms.optimizers import COBYLA, L_BFGS_B, SLSQP, NELDER_MEAD, SPSA, GSLS, UMDA, IMFIL
-
+        from qiskit.algorithms.optimizers import COBYLA, L_BFGS_B, SLSQP, NELDER_MEAD, SPSA, GSLS, UMDA, IMFIL, NFT, TNC, POWELL, ADAM
         name, maxiter = s.split('.')
         maxiter = int(maxiter)
         if name == 'COBYLA':
@@ -139,7 +138,16 @@ class DVR_VQE:
             return UMDA(maxiter=maxiter)
         elif name == 'IMFIL':
             return IMFIL(maxiter=maxiter)
+        elif name == 'NFT':
+            return NFT(maxfev=maxiter)
+        elif name == 'TNC': 
+            return TNC(maxiter=maxiter)
+        elif name == 'ADAM': 
+            return ADAM(maxiter=maxiter)
+        elif name == 'POWELL': 
+            return POWELL(maxiter=maxiter)
         
+
     def print_options(self, options_list, options_file):
         import json
 
@@ -148,7 +156,7 @@ class DVR_VQE:
 
     def get_greedy_ansatz(self, ansatz_options, best_circs, log_file=None):
         import numpy as np
-        from .greedy_circs import build_circuit
+        from greedy_circs import build_circuit
 
         layer_list = [np.random.randint(0, ansatz_options['max_gate'] + 1, (ansatz_options['num_qubits'], 1)) 
                         for _ in range(ansatz_options['samples'])]
@@ -169,12 +177,12 @@ class DVR_VQE:
                 ansatz_list.append(ansatz)
                 circ_list_final.append(c)
                 ansatz_string_list.append(s)
-                
+                 
         return circ_list_final, ansatz_list
 
     def opt_greedy_vqe(self, h_dvr_pauli, ansatz_options, vqe_options, log_file=None, prev_circs=None):
         import numpy as np
-        from .utils import print_log
+        from utils import print_log
         from qiskit import Aer
         from qiskit.algorithms import VQE
         from qiskit.utils import QuantumInstance, algorithm_globals
@@ -213,8 +221,8 @@ class DVR_VQE:
 
     def opt_greedyent_vqe(self, h_dvr_pauli, ansatz_options, vqe_options, allowed_gates, log_file=None, gates=None):
         import numpy as np
-        from .utils import print_log
-        from .greedy_circs import build_circuit_ent
+        from utils import print_log
+        from greedy_circs import build_circuit_ent
 
         num_qubits = ansatz_options['num_qubits']
         reps = ansatz_options['reps']
@@ -256,9 +264,9 @@ class DVR_VQE:
 
     def get_dvr_vqe(self, dvr_options, ansatz_options, vqe_options, excited_states=False, cont=0):
         from qiskit.quantum_info import SparsePauliOp
-        from .utils import hartree
-        from .greedy_circs import build_circuit, build_circuit_ent, find_allowed_gates
-        from .block_circs import block_divider, build_circuit_from_s
+        from utils import hartree
+        from greedy_circs import build_circuit, build_circuit_ent, find_allowed_gates
+        from block_circs import block_divider, build_circuit_from_s
         import os
         import numpy as np
 
@@ -310,7 +318,7 @@ class DVR_VQE:
                 for i in range(len(best_circs)):
                     ansatz = build_circuit(best_circs[i], ansatz_options)
                     print_log(str(ansatz), log_file)
-                    print_log(f'Depth : {ansatz.depth()}, Energy: {best_energies[i]}, Counts: {converge_cnts[i][-1]}', log_file)
+                    print_log(f'Depth : {ansatz.depth()}, Energy: {best_energies[i]}, Counts: {converge_cnts[i][-1]}, Best Params: {best_params[-1]}', log_file)
 
                 if self.log_dir is not None:
                     np.savez(log_dir_id + f'vqe_greedy{l+1}.npz', counts=converge_cnts, vals=converge_vals, 
@@ -323,7 +331,7 @@ class DVR_VQE:
 
             print_log(f'Final circuit after {ansatz_options["layers"]} layers: ', log_file)
             print_log(str(ansatz), log_file)
-            print_log(f'Depth : {ansatz.depth()}, Energy: {best_energies[ind]}, Counts: {converge_cnts[ind][-1]}', log_file)
+            print_log(f'Depth : {ansatz.depth()}, Energy: {best_energies[ind]}, Counts: {converge_cnts[ind][-1]}, Best Params: {best_params[-1]}', log_file)
             if self.log_dir is not None:
                 np.savez(log_dir_id + f'vqe_greedy_final.npz', counts=converge_cnts[ind], vals=converge_vals[ind], 
                         params=best_params[ind], energies=best_energies[ind], best_circs=best_circs[ind])
@@ -346,7 +354,7 @@ class DVR_VQE:
                 print_log(f'Layer {l+1} results:', log_file)
                 ansatz = build_circuit_ent(ansatz_options, gates, simplify=True)
                 print_log(str(ansatz), log_file)
-                print_log(f'Depth : {ansatz.depth()}, Energy: {best_energy}, Counts: {converge_cnts[-1]}', log_file)
+                print_log(f'Depth : {ansatz.depth()}, Energy: {best_energy}, Counts: {converge_cnts[-1]}, Best Params: {best_params[-1]}', log_file)
 
                 if self.log_dir is not None:
                     np.savez(log_dir_id + f'vqe_greedyent{l+1}.npz', counts=converge_cnts, vals=converge_vals, 
@@ -358,7 +366,7 @@ class DVR_VQE:
 
             print_log(f'Final circuit after {ansatz_options["layers"]} layers: ', log_file)
             print_log(str(ansatz), log_file)
-            print_log(f'Depth : {ansatz.depth()}, Energy: {best_energy}, Counts: {converge_cnts[-1]}', log_file)
+            print_log(f'Depth : {ansatz.depth()}, Energy: {best_energy}, Counts: {converge_cnts[-1]}, Best Params: {best_params[-1]}', log_file)
             if self.log_dir is not None:
                 np.savez(log_dir_id + f'vqe_greedy_final.npz', counts=converge_cnts, vals=converge_vals, 
                         params=best_param, energies=best_energy, removed_gates=gates)
@@ -446,6 +454,6 @@ class DVR_VQE:
 
                     for i in range(len(best_energies1)):
                         optimizer = self.parse_optimizer_string(vqe_options['optimizers'][i])
-                        print_log(f'{type(optimizer).__name__}, Energy: {best_energies1[i]}, Counts: {converge_cnts1[i][-1]}', log_file)
+                        print_log(f'{type(optimizer).__name__}, Energy: {best_energies1[i]}, Counts: {converge_cnts1[i][-1]}, Best Params: {best_params[i][-1]}', log_file)
                     
         print_log('-----------------------------------------', log_file)

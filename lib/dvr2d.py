@@ -1,4 +1,4 @@
-from .utils import *
+from utils import *
 
 m_ar = 39.9623831238 * da_to_au
 m_h = 1.007825031898 * da_to_au
@@ -35,20 +35,8 @@ mgnh_params = {
 
 
 def get_FBR_R(N_R, l):
-    import numpy as np
-
     offset_R = l + 1
-    rows, cols = np.indices((N_R, N_R))
     delta_R = np.zeros((N_R, N_R), dtype=float)
-
-    # delta_R += 2 * np.diag(np.arange(N_R) + offset_R)
-
-    # rows_1 = np.diag(rows, k=1)
-    # cols_1 = np.diag(cols, k=1)
-    # rows_2 = np.diag(rows, k=-1)
-    # cols_2 = np.diag(cols, k=-1)
-    # delta_R[rows_1, cols_1] = -np.sqrt((cols_1 + offset_R + l) * (cols_1 + offset_R - l - 1))
-    # delta_R[rows_2, cols_2] = -np.sqrt((cols_2 + offset_R - l) * (cols_2 + offset_R + l + 1))
     for i in range(N_R):
         for j in range(N_R):
             if i == j:
@@ -57,13 +45,9 @@ def get_FBR_R(N_R, l):
                 delta_R[i, j] = -np.sqrt((j + offset_R + l) * (j + offset_R - l - 1))
             elif i == j + 1:
                 delta_R[i, j] = -np.sqrt((j + offset_R - l) * (j + offset_R + l + 1))
-
-    # print(delta_R, delta_R2)
-    return delta_R# / 2
+    return delta_R
 
 def get_DVR_R(N_R, l, return_T=True):
-    import numpy as np
-
     delta_R = get_FBR_R(N_R, l=l)
     R, eigvecs = np.linalg.eigh(delta_R)
     T_R = np.stack(eigvecs)
@@ -72,19 +56,9 @@ def get_DVR_R(N_R, l, return_T=True):
     return R
 
 def get_FBR_X(N_theta, K):
-    import numpy as np
-
     offset_theta = K
     rows, cols = np.indices((N_theta, N_theta))
     delta_thetaK = np.zeros((N_theta, N_theta), dtype=float)
-    # print(delta_thetaK)
-
-    # rows_1 = np.diag(rows, k=1)
-    # cols_1 = np.diag(cols, k=1)
-    # rows_2 = np.diag(rows, k=-1)
-    # cols_2 = np.diag(cols, k=-1)
-    # delta_thetaK[rows_1, cols_1] = -np.sqrt((cols_1 + offset_theta - K) * (cols_1 + offset_theta + K) / ((2 * (cols_1 + offset_theta) + 1) * (2 * (cols_1 + offset_theta) - 1)))
-    # delta_thetaK[rows_2, cols_2] = -np.sqrt((cols_2 + offset_theta - K + 1) * (cols_2 + offset_theta + K + 1) / ((2 * (cols_2 + offset_theta) + 1) * (2 * (cols_2 + offset_theta) + 3)))
     for i in range(N_theta):
         for j in range(N_theta):
             if i == j + 1:
@@ -95,8 +69,6 @@ def get_FBR_X(N_theta, K):
     return delta_thetaK
 
 def get_DVR_X(N_theta, K, return_T=True):
-    import numpy as np
-
     delta_thetaK = get_FBR_X(N_theta, K)
     X, eigvecs = np.linalg.eigh(delta_thetaK)
     T_thetaK = np.stack(eigvecs)
@@ -105,8 +77,6 @@ def get_DVR_X(N_theta, K, return_T=True):
     return X
 
 def get_sturmian_int(i1, i2, l, p):
-    import numpy as np
-
     out = (-1)**(i1 + i2 + 2*l) * np.math.factorial(2 * l + p + 2)
     out *= np.sqrt(np.math.factorial(i1 - l - 1) * np.math.factorial(i2 - l - 1) / (np.math.factorial(i1 + l) * np.math.factorial(i2 + l)))
     
@@ -124,31 +94,18 @@ def get_sturmian_int(i1, i2, l, p):
     return out * s
 
 def get_orthonormal_sturmian_int(i1, i2, l, p):
-    # scale = np.abs(p) + 1
-    # if scale == 0:
-    #     scale = 1
     return get_sturmian_int(i1, i2, l, p - 1)
 
 def get_D_R_FBR(N_R, l, mol_params=arhcl_params):
-    import numpy as np
-
     offset_R = l + 1
-    # print(offset_R)
     def get_D_R_FBR_ij(i, j):
-        # print(i, j)
         out = (j - l*(l+1) - 3/4) * get_orthonormal_sturmian_int(i, j, l, -2)
-        # print(out)
         out += (j - 1/2) * get_orthonormal_sturmian_int(i, j, l, -1)
-        # print(out)
         if i == j:
             out -= 1/4
-            # pass
-        # print(out)
         if j > (l + 1):
             out -= np.sqrt(j*(j-1) - l*(l+1)) * get_orthonormal_sturmian_int(i, j-1, l, -2)
-        # print(out)
         out *= 1 / (2 * mol_params['mu'])
-        # print('----------')
         return out
     
     D_R = np.zeros((N_R, N_R), dtype=float)
@@ -228,7 +185,6 @@ def get_ham_DVR(pot2d, dvr_options, mol_params=arhcl_params, count_thresh=None, 
     (Rs_DVR, T_R), (Xs_K, T_thetaK) = get_DVR_Rtheta(dvr_options, mol_params=mol_params, return_T=True)
     N_R_lim = Rs_DVR.shape[0]
 
-    # K = 0 # temp
     JK = np.min([dvr_options['J'], dvr_options['K_max']]) + 1
     Vs_K = []
     for K in range(JK):
@@ -237,17 +193,12 @@ def get_ham_DVR(pot2d, dvr_options, mol_params=arhcl_params, count_thresh=None, 
         Vs = pot2d(Rs_grid, Xs_grid)
         Vs_K.append(Vs)
     Vs_K = np.array(Vs_K)
-    # print(np.any(np.isnan(Vs)))
-
     D_R = get_D_R_DVR(dvr_options['N_R'], dvr_options['l'], T_R=T_R, mol_params=mol_params)[:N_R_lim, :N_R_lim]
     D_thetaK = []
     for K in range(JK):
         D_theta = get_D_thetaK_DVR(dvr_options['N_theta'], K=K, T_thetaK=T_thetaK[K])
         D_thetaK.append(D_theta)
     D_thetaK = np.array(D_thetaK)
-    # print(np.any(np.isnan(D_R)))
-    # print(np.any(np.isnan(D_theta)))
-
     C_s = []
     E_s = []
     if dvr_options['trunc'] == 0:
@@ -292,11 +243,8 @@ def get_ham_DVR(pot2d, dvr_options, mol_params=arhcl_params, count_thresh=None, 
                 h_dvr[K, j1, i1, K, j1, i1] += (dvr_options['J'] * (dvr_options['J'] + 1) - 2 * K**2) / (2 * mol_params['mu'] * np.square(Rs_DVR[i1]))
                 h_dvr[K, j1, i1, K, j1, i1] += Vs_K[K, i1 + j1 * N_R_lim] / hartree
 
-    # print(np.any(np.isnan(h_dvr)))
-
     h_dvr2 = np.einsum('ijk,oijplm,lmn->oikpln', C_s, h_dvr, C_s)
     h_dvr2 = h_dvr2.reshape((h_dvr2.shape[0] * h_dvr2.shape[1] * h_dvr2.shape[2], h_dvr2.shape[3] * h_dvr2.shape[4] * h_dvr2.shape[5]))
-    # print(np.any(np.isnan(h_dvr2)))
 
     if (v_thresh is None) and (count_thresh is not None) and (count_thresh < h_dvr2.shape[0]):
         v_thresh = np.sort(Vs)[count_thresh]

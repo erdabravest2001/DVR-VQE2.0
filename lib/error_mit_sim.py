@@ -47,7 +47,7 @@ def run_VQE_for_all_resilience_levels(mol_params, spin, params16, backends, toke
         # params = np.array([float(i) for i in result.optimal_parameters.values()])
         converge_cnts1 = np.empty([len(optimizers)], dtype=object)
         converge_vals1 = np.empty([len(optimizers)], dtype=object)
-
+        converge_params = np.empty([len(a.params)], dtype=object)
         for i, optimizer in enumerate(optimizers):
             print('Optimizer: {}        '.format(type(optimizer).__name__))
             # algorithm_globals.random_seed = 42
@@ -55,12 +55,14 @@ def run_VQE_for_all_resilience_levels(mol_params, spin, params16, backends, toke
             def store_intermediate_result(eval_count, parameters, mean, std):
                 counts.append(eval_count)
                 values.append(mean)
-                print(f'\r{eval_count}, {mean}', end='')
+                parameters = np.array(parameters)
+                print(f'\r{eval_count}, {mean}, {parameters}', end='')
             best_res1 = None
             
             for j in range(repeat):
                 counts = []
                 values = []
+                parameters = []
                 vqe = VQE(estimator=estimator, ansatz=a, optimizer=optimizer, initial_point=params, callback=store_intermediate_result)
                 results = vqe.compute_minimum_eigenvalue(operator=operator)
                 print()
@@ -68,8 +70,10 @@ def run_VQE_for_all_resilience_levels(mol_params, spin, params16, backends, toke
                     best_res1 = values[-1]
                     converge_cnts1[i] = np.asarray(counts)
                     converge_vals1[i] = np.asarray(values)
+                    converge_params[i] = np.asarray(parameters) 
+                    
         print('\nOptimization complete ') 
-        return converge_cnts1, converge_vals1, results
+        return converge_cnts1, converge_vals1, converge_params, results
 
 
     h_dvr, operator, a = gen_ansatz_op(mol_params, spin, params16)
