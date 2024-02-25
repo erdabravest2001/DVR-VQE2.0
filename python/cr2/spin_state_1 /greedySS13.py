@@ -10,12 +10,12 @@ from vqe import DVR_VQE  # Importing the class for DVR using VQE
 from pot_gen import get_pot_cr2  # Function to generate potential for CR2
 
 # 16 points
-params16 = [5.28, 9]
+params32 = [2.8, 4]
 
 dvr_options = {
     'type': '1d',
-    'box_lims': (params16[0], params16[1]),
-    'dx': (params16[1] - params16[0]) / 32,
+    'box_lims': (params32[0], params32[1]),
+    'dx': (params32[1] - params32[0]) / 32,
     'count': 32
 }
 
@@ -42,13 +42,13 @@ vqe_options = {
 
 
 mol_params = cr2_params
-spin = 13
+spin = 1
 mol_params['name'] += f'_{spin}'
 
 
 pot, lims = get_pot_cr2(spin)
 
-dvr_vqe = DVR_VQE(mol_params, pot, log_dir='/Users/ethanelliotrajkumar/Documents/DVR-VQE2.0/results/cr2/spin_state_13/greedy/5_qubits')
+dvr_vqe = DVR_VQE(mol_params, pot, log_dir='/Users/ethanelliotrajkumar/Documents/DVR-VQE2.0/results/cr2/spin_state_1/greedy/5_qubits')
 # dvr_vqe = DVR_VQE(mol_params, pot, log_dir=scratch_dir + 'test/')
 for ansatz_options in ansatz_options_list:
     dvr_vqe.get_dvr_vqe(dvr_options, ansatz_options, vqe_options, excited_states=False)
